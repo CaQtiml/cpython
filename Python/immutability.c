@@ -67,10 +67,12 @@ int init_state(struct _Py_immutability_state *state)
         return -1;
     }
 
-    if(PyDict_SetItemString(PyModule_GetDict(frozen_importlib), "_freezable_types", state->freezable_types)){
-        Py_DECREF(frozen_importlib);
-        return -1;
-    }
+    // TODO(Immutable): mjp: Why is this here?  I can find anyone using it.  Can we remove it?
+    //  Commented out for now, but we should remove if MAJ agrees.
+    // if(PyDict_SetItemString(PyModule_GetDict(frozen_importlib), "_freezable_types", state->freezable_types)){
+    //     Py_DECREF(frozen_importlib);
+    //     return -1;
+    // }
 
     Py_DECREF(frozen_importlib);
 
