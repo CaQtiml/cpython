@@ -39,14 +39,9 @@ null_error(void)
 }
 
 static PyObject *
-immutable_error(void)
+immutable_error(PyObject* op)
 {
-    PyThreadState *tstate = _PyThreadState_GET();
-    if (!_PyErr_Occurred(tstate)) {
-        _PyErr_SetString(tstate, PyExc_TypeError,
-                         "cannot modify immutable instance");
-    }
-    return NULL;
+    return _PyErr_WriteToImmutable(op);
 }
 
 /* Operations on any object */
@@ -244,7 +239,7 @@ PyObject_SetItem(PyObject *o, PyObject *key, PyObject *value)
     PyMappingMethods *m = Py_TYPE(o)->tp_as_mapping;
     if (m && m->mp_ass_subscript) {
         if(!Py_CHECKWRITE(o)){
-            immutable_error();
+            immutable_error(o);
             return -1;
         }
 
@@ -256,7 +251,7 @@ PyObject_SetItem(PyObject *o, PyObject *key, PyObject *value)
     if (Py_TYPE(o)->tp_as_sequence) {
         if (_PyIndex_Check(key)) {
             if(!Py_CHECKWRITE(o)){
-                immutable_error();
+                immutable_error(o);
                 return -1;
             }
 
@@ -288,7 +283,7 @@ PyObject_DelItem(PyObject *o, PyObject *key)
     PyMappingMethods *m = Py_TYPE(o)->tp_as_mapping;
     if (m && m->mp_ass_subscript) {
         if(!Py_CHECKWRITE(o)){
-            immutable_error();
+            immutable_error(o);
             return -1;
         }
 
@@ -300,7 +295,7 @@ PyObject_DelItem(PyObject *o, PyObject *key)
     if (Py_TYPE(o)->tp_as_sequence) {
         if (_PyIndex_Check(key)) {
             if(!Py_CHECKWRITE(o)){
-                immutable_error();
+                immutable_error(o);
                 return -1;
             }
 
@@ -441,7 +436,7 @@ PyObject_AsWriteBuffer(PyObject *obj,
     }
 
     if(!Py_CHECKWRITE(obj)){
-        immutable_error();
+        immutable_error(obj);
         return -1;
     }
 
@@ -481,7 +476,7 @@ PyObject_GetBuffer(PyObject *obj, Py_buffer *view, int flags)
     }
 
     if((flags & PyBUF_WRITABLE) && !Py_CHECKWRITE(obj)){
-        immutable_error();
+        immutable_error(obj);
         return -1;
     }
 
@@ -1281,7 +1276,7 @@ binary_iop1(PyObject *v, PyObject *w, const int iop_slot, const int op_slot
         binaryfunc slot = NB_BINOP(mv, iop_slot);
         if (slot) {
             if(!Py_CHECKWRITE(v)){
-                immutable_error();
+                immutable_error(v);
                 return NULL;
             }
 
@@ -1327,7 +1322,7 @@ ternary_iop(PyObject *v, PyObject *w, PyObject *z, const int iop_slot, const int
         ternaryfunc slot = NB_TERNOP(mv, iop_slot);
         if (slot) {
             if(!Py_CHECKWRITE(v)){
-                immutable_error();
+                immutable_error(v);
                 return NULL;
             }
 
@@ -1840,7 +1835,7 @@ PySequence_InPlaceConcat(PyObject *s, PyObject *o)
     PySequenceMethods *m = Py_TYPE(s)->tp_as_sequence;
     if (m && m->sq_inplace_concat) {
         if(!Py_CHECKWRITE(s)){
-            return immutable_error();
+            return immutable_error(s);
         }
 
         PyObject *res = m->sq_inplace_concat(s, o);
@@ -1873,7 +1868,7 @@ PySequence_InPlaceRepeat(PyObject *o, Py_ssize_t count)
     PySequenceMethods *m = Py_TYPE(o)->tp_as_sequence;
     if (m && m->sq_inplace_repeat) {
         if (!Py_CHECKWRITE(o)){
-            return immutable_error();
+            return immutable_error(o);
         }
 
         PyObject *res = m->sq_inplace_repeat(o, count);
@@ -1964,7 +1959,7 @@ PySequence_SetItem(PyObject *s, Py_ssize_t i, PyObject *o)
     PySequenceMethods *m = Py_TYPE(s)->tp_as_sequence;
     if (m && m->sq_ass_item) {
         if (!Py_CHECKWRITE(s)){
-            immutable_error();
+            immutable_error(s);
             return -1;
         }
 
@@ -2002,7 +1997,7 @@ PySequence_DelItem(PyObject *s, Py_ssize_t i)
     PySequenceMethods *m = Py_TYPE(s)->tp_as_sequence;
     if (m && m->sq_ass_item) {
         if(!Py_CHECKWRITE(s)){
-            immutable_error();
+            immutable_error(s);
             return -1;
         }
 
@@ -2040,7 +2035,7 @@ PySequence_SetSlice(PyObject *s, Py_ssize_t i1, Py_ssize_t i2, PyObject *o)
     PyMappingMethods *mp = Py_TYPE(s)->tp_as_mapping;
     if (mp && mp->mp_ass_subscript) {
         if (!Py_CHECKWRITE(s)){
-            immutable_error();
+            immutable_error(s);
             return -1;
         }
 
@@ -2068,7 +2063,7 @@ PySequence_DelSlice(PyObject *s, Py_ssize_t i1, Py_ssize_t i2)
     PyMappingMethods *mp = Py_TYPE(s)->tp_as_mapping;
     if (mp && mp->mp_ass_subscript) {
         if(!Py_CHECKWRITE(s)){
-            immutable_error();
+            immutable_error(s);
             return -1;
         }
 
