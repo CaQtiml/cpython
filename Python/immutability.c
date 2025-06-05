@@ -406,7 +406,7 @@ typedef enum {
     VALID_IMPLICIT,
     INVALID_NOT_FREEZABLE,
     INVALID_C_EXTENSIONS,
-    ERROR
+    FREEZABLE_ERROR
 } FreezableCheck;
 
 
@@ -425,7 +425,7 @@ static FreezableCheck check_freezable(struct _Py_immutability_state *state, PyOb
     */
     result = PyObject_IsInstance(obj, (PyObject *)&_PyNotFreezable_Type);
     if(result == -1){
-        return ERROR;
+        return FREEZABLE_ERROR;
     }
     else if(result == 1){
         return INVALID_NOT_FREEZABLE;
@@ -437,7 +437,7 @@ static FreezableCheck check_freezable(struct _Py_immutability_state *state, PyOb
 
     result = is_explicitly_freezable(state, obj);
     if(result == -1){
-        return ERROR;
+        return FREEZABLE_ERROR;
     }
     else if(result == 1){
         return VALID_EXPLICIT;
@@ -520,7 +520,7 @@ int _PyImmutability_Freeze(PyObject* obj)
         PyObject *stack = PyObject_CallFunctionObjArgs(state->traceback_func, NULL);
         if (stack != NULL) {
             // Add the type name to the top of the stack, can be useful.
-            PyObject* typename = PyObject_GetAttrString(Py_TYPE(obj), "__name__");
+            PyObject* typename = PyObject_GetAttrString(_PyObject_CAST(Py_TYPE(obj)), "__name__");
             push(stack, typename);
             freeze_location = stack;
         }
@@ -567,7 +567,7 @@ int _PyImmutability_Freeze(PyObject* obj)
             case VALID_IMPLICIT:
                 break;
 
-            case ERROR:
+            case FREEZABLE_ERROR:
                 goto error;
 
             default:

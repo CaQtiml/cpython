@@ -6872,7 +6872,7 @@ _PyObject_MaterializeManagedDict_LockHeld(PyObject *obj)
     }
     if (_Py_IsImmutable(obj)) {
         // TODO(Immutable): For subinterpreters this will probably also need a lock!
-        _PyImmutability_Freeze(dict);
+        _PyImmutability_Freeze(_PyObject_CAST(dict));
     }
     FT_ATOMIC_STORE_PTR_RELEASE(_PyObject_ManagedDictPointer(obj)->dict,
                                 dict);
