@@ -212,7 +212,10 @@ static inline void Py_SET_REFCNT(PyObject *ob, Py_ssize_t refcnt) {
         if (_Py_IsImmortal(ob)) {
             return;
         }
-        assert(_Py_IsImmutable(ob));
+        // TODO This assertion is not valid as refcount overflows can trigger the
+        // PyImmortalOrImmutable check to fire.
+        // assert(_Py_IsImmutable(ob));
+
         // TODO(Immutable): It is dangerous to set the reference count of an
         // immutable object. The majority of calls appear to be where the rc
         // has reached 0 and a finalizer is running. This seems a reasonable
