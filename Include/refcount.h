@@ -370,7 +370,7 @@ static inline Py_ALWAYS_INLINE void Py_INCREF(PyObject *op)
         // Object is immutable.
         // TODO(Immutable): Will need Atomic RC here
     }
-    op->ob_refcnt = cur_refcnt + 1;
+    op->ob_refcnt = (uint32_t)cur_refcnt + 1;
 #else
     if (_Py_IsImmortalOrImmutable(op)) {
         if (_Py_IsImmortal(op)) {
