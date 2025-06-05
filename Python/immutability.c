@@ -80,7 +80,7 @@ int init_state(struct _Py_immutability_state *state)
 }
 
 // This is separate to the previous init as it depends on the traceback
-// module being available, and can cause a circular import if it is 
+// module being available, and can cause a circular import if it is
 // called during register freezable.
 static
 void init_traceback_state(struct _Py_immutability_state *state)
