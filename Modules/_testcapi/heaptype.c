@@ -4,6 +4,45 @@
 
 static struct PyModuleDef *_testcapimodule = NULL;  // set at initialization
 
+/* Tests for immuability (PyType_From*) */
+
+typedef struct {
+    PyObject_HEAD
+    long long counter;
+} HotObject;
+
+static PyObject *
+HotObject_get(HotObject *self, void *closure)
+{
+    return PyLong_FromLongLong(self->counter++);
+}
+
+static int
+HotObject_set(HotObject *self, PyObject *value, void *closure)
+{
+    if (!PyLong_Check(value)) {
+        PyErr_SetString(PyExc_TypeError, "Expected int");
+        return -1;
+    }
+    self->counter = PyLong_AsLongLong(value);
+    return 0;
+}
+
+static PyGetSetDef HotObject_getset[] = {
+    {"counter", (getter)HotObject_get, (setter)HotObject_set, "counter", NULL},
+    {NULL}
+};
+
+static PyTypeObject HotObject_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "_testcapi.HotObject",
+    .tp_basicsize = sizeof(HotObject),
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_new = PyType_GenericNew,
+    .tp_getset = HotObject_getset,
+};
+
+
 /* Tests for heap types (PyType_From*) */
 
 static PyObject *pytype_fromspec_meta(PyObject* self, PyObject *meta)
@@ -1354,6 +1393,8 @@ _PyTestCapi_Init_Heaptype(PyObject *m) {
 
     PyObject *HeapGcCType = PyType_FromSpec(&HeapGcCType_spec);
     ADD("HeapGcCType", HeapGcCType);
+
+    PyModule_AddType(m, &HotObject_Type);
 
     PyObject *HeapCType = PyType_FromSpec(&HeapCType_spec);
     if (HeapCType == NULL) {

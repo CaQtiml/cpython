@@ -2904,5 +2904,23 @@ class TestCEval(unittest.TestCase):
         self.assertEqual(lines.count("DESTROY list"), 2)
 
 
+class TestFreezing(unittest.TestCase):
+   def test_freezing_hot_obj(self):
+        from immutable import freeze
+        ty = _testcapi.HotObject
+        obj = ty()
+        with self.assertRaises(TypeError):
+            freeze(obj)
+
+   def test_freezing_pot(self):
+        from immutable import freeze
+        class Pot(_testcapi.HotObject):
+            pass
+
+        obj = Pot()
+        freeze(obj)
+        self.assertEqual(obj.counter, 0)
+        self.assertEqual(obj.counter, 1)
+
 if __name__ == "__main__":
     unittest.main()

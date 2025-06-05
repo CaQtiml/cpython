@@ -515,6 +515,7 @@ Modules/_testcapimodule.c	-	capsule_pointer	-
 Modules/_testcapimodule.c	-	decimal_initialized	-
 Modules/_testcapimodule.c	-	generic_alias_methods	-
 Modules/_testcapimodule.c	-	generic_methods	-
+Modules/_testcapimodule.c	-	HotObject_getset	-
 Modules/_testcapimodule.c	-	heapctype_members	-
 Modules/_testcapimodule.c	-	heapctypesetattr_members	-
 Modules/_testcapimodule.c	-	heapctypesubclass_members	-
