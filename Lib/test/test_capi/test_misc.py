@@ -2903,24 +2903,79 @@ class TestCEval(unittest.TestCase):
         self.assertEqual(lines.count("CREATE list"), 2)
         self.assertEqual(lines.count("DESTROY list"), 2)
 
+from _testcapi import HotObject
 
 class TestFreezing(unittest.TestCase):
-   def test_freezing_hot_obj(self):
+    def test_freezing_hot_obj(self):
         from immutable import freeze
-        ty = _testcapi.HotObject
+        ty = HotObject
         obj = ty()
         with self.assertRaises(TypeError):
             freeze(obj)
 
-   def test_freezing_pot(self):
+    def test_freezing_pot(self):
         from immutable import freeze
-        class Pot(_testcapi.HotObject):
+        class Pot(HotObject):
             pass
 
         obj = Pot()
-        freeze(obj)
+        with self.assertRaises(TypeError):
+            freeze(obj)
         self.assertEqual(obj.counter, 0)
         self.assertEqual(obj.counter, 1)
+        self.assertEqual(obj.counter, 2)
+
+    def test_freezing_pot_with_field(self):
+        from immutable import freeze
+        class PotWithField(HotObject):
+            counter = 0
+            pass
+
+        obj = PotWithField()
+        with self.assertRaises(TypeError):
+            freeze(obj)
+        self.assertEqual(obj.counter, 0)
+        self.assertEqual(obj.counter, 0)
+
+        self.assertEqual(HotObject.counter.__get__(obj), 0)
+        self.assertEqual(HotObject.counter.__get__(obj), 1)
+
+    def test_freezing_sub_pot_with_field(self):
+        from immutable import freeze
+        class PotWithField(HotObject):
+            counter = 0
+        class SubPotWithField(PotWithField):
+            def hot_counter(self):
+                return super(PotWithField, self).counter
+
+        obj = SubPotWithField()
+        # with self.assertRaises(TypeError):
+        #     freeze(obj)
+        self.assertEqual(obj.counter, 0)
+        self.assertEqual(obj.counter, 0)
+
+        self.assertEqual(obj.hot_counter(), 0)
+        self.assertEqual(obj.hot_counter(), 1)
+
+    def test_fail_hot_field(self):
+        from immutable import freeze, isfrozen, NotFreezable
+        class HotNotFreezable(NotFreezable):
+            pass
+        class Foo:
+            field: None
+        
+        # Freezing an emptry foo is fine
+        foo = Foo()
+        freeze(foo)
+
+        # Freezing an emptry foo is fine
+        foo = Foo()
+        foo.field = HotNotFreezable()
+        with self.assertRaises(TypeError):
+            freeze(foo)
+        
+        # This is a problem
+        self.assertTrue(isfrozen(foo))
 
 if __name__ == "__main__":
     unittest.main()

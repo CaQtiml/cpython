@@ -387,10 +387,10 @@ is_freezable_builtin(PyTypeObject *type)
 }
 
 static int
-is_explicitly_freezable(struct _Py_immutability_state *state, PyObject *obj)
+is_explicitly_freezable(struct _Py_immutability_state *state, PyTypeObject *obj)
 {
     int result = 0;
-    PyObject *ref = type_weakref(state, (PyObject *)obj->ob_type);
+    PyObject *ref = type_weakref(state, (PyObject *)obj);
     if(ref == NULL){
         return -1;
     }
@@ -431,11 +431,21 @@ static FreezableCheck check_freezable(struct _Py_immutability_state *state, PyOb
         return INVALID_NOT_FREEZABLE;
     }
 
-    if(is_freezable_builtin(obj->ob_type)){
+    // FIMXE: This just breaks rollback completely, I feel like there is
+    // no real ways without recursion or rewalking...
+    // TODO: Craft an example and talk about rollback, or see if rollback is
+    // already an implemented somewhere?
+    if(!PyType_Check(obj)){
+        return VALID_IMPLICIT;
+    }
+
+    PyTypeObject* type = (PyTypeObject*)obj;
+    // if obj != type return implicit_valid
+    if(is_freezable_builtin(type)){
         return VALID_BUILTIN;
     }
 
-    result = is_explicitly_freezable(state, obj);
+    result = is_explicitly_freezable(state, type);
     if(result == -1){
         return FREEZABLE_ERROR;
     }
@@ -443,7 +453,7 @@ static FreezableCheck check_freezable(struct _Py_immutability_state *state, PyOb
         return VALID_EXPLICIT;
     }
 
-    if(_PyType_HasExtensionSlots(obj->ob_type)){
+    if(_PyType_HasExtensionSlots(type)){
         return INVALID_C_EXTENSIONS;
     }
 
@@ -575,6 +585,8 @@ int _PyImmutability_Freeze(PyObject* obj)
                 goto error;
         }
 
+        // FIMXE: comment about rollback
+        // Well we need rollback
         if(_Py_IsImmutable(item)){
             continue;
         }
@@ -613,6 +625,9 @@ int _PyImmutability_Freeze(PyObject* obj)
                 goto error;
             }
 
+            // Don't walk the type hierarchy if the type is explicitly allowed.
+            // This allows the creation of safe wrapper types, while unsafe C
+            // type remains unfreezable.
             if(check != VALID_EXPLICIT)
             {
                 if(push(frontier, type->tp_mro))
