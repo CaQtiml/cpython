@@ -4755,6 +4755,8 @@ dict_reachable(PyObject *op, visitproc visit, void *arg)
     PyDictKeysObject *keys = mp->ma_keys;
     Py_ssize_t n = keys->dk_nentries;
 
+    Py_VISIT(_PyObject_CAST(Py_TYPE(op)));
+
     if (DK_IS_UNICODE(keys)) {
         PyDictUnicodeEntry *entries = DK_UNICODE_ENTRIES(keys);
         if (_PyDict_HasSplitTable(mp)) {

@@ -1553,10 +1553,6 @@ int traverse_freeze(PyObject* obj, struct FreezeState* freeze_state)
         }
     }
 
-    // Always freeze the type object itself; tp_reachable implementations
-    // may omit visiting the type (e.g., dict-derived heap types).
-    SUCCEEDS(freeze_visit(_PyObject_CAST(Py_TYPE(obj)), freeze_state));
-
     return 0;
 
 error:

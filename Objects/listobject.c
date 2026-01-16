@@ -3466,6 +3466,7 @@ list_traverse(PyObject *self, visitproc visit, void *arg)
 static int
 list_reachable(PyObject *self, visitproc visit, void *arg)
 {
+    Py_VISIT(_PyObject_CAST(Py_TYPE(self)));
     return list_traverse(self, visit, arg);
 }
 

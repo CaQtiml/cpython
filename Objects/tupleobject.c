@@ -635,6 +635,7 @@ tuple_traverse(PyObject *self, visitproc visit, void *arg)
 static int
 tuple_reachable(PyObject *self, visitproc visit, void *arg)
 {
+    Py_VISIT(_PyObject_CAST(Py_TYPE(self)));
     return tuple_traverse(self, visit, arg);
 }
 

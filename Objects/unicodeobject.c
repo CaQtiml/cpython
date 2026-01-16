@@ -14632,7 +14632,9 @@ static PyObject *unicode_iter(PyObject *seq);
 static int
 unicode_reachable(PyObject *self, visitproc visit, void *arg)
 {
-    // Strings do not own references to other PyObjects.
+    // Strings do not own references to other PyObjects, but we still
+    // report reachability to the type object.
+    Py_VISIT(_PyObject_CAST(Py_TYPE(self)));
     return 0;
 }
 

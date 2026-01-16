@@ -6948,6 +6948,9 @@ PyDoc_STRVAR(type_doc,
 "type(name, bases, dict, **kwds) -> a new type");
 
 static int
+object_reachable(PyObject *self, visitproc visit, void *arg);
+
+static int
 type_traverse(PyObject *self, visitproc visit, void *arg)
 {
     PyTypeObject *type = PyTypeObject_CAST(self);
@@ -8366,7 +8369,21 @@ PyTypeObject PyBaseObject_Type = {
     PyType_GenericAlloc,                        /* tp_alloc */
     object_new,                                 /* tp_new */
     PyObject_Free,                              /* tp_free */
+    .tp_reachable = object_reachable,
 };
+
+static int
+object_reachable(PyObject *self, visitproc visit, void *arg)
+{
+    Py_VISIT(_PyObject_CAST(Py_TYPE(self)));
+
+    traverseproc traverse = Py_TYPE(self)->tp_traverse;
+    if (traverse != NULL) {
+        return traverse(self, visit, arg);
+    }
+
+    return 0;
+}
 
 
 static int
