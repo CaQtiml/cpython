@@ -1526,9 +1526,12 @@ int traverse_freeze(PyObject* obj, struct FreezeState* freeze_state)
     }
     else
     {
-        traverseproc traverse = Py_TYPE(obj)->tp_traverse;
-        if(traverse != NULL){
-            SUCCEEDS(traverse(obj, (visitproc)freeze_visit, freeze_state));
+        traverseproc references = Py_TYPE(obj)->tp_reachable;
+        if (references == NULL) {
+            references = Py_TYPE(obj)->tp_traverse;
+        }
+        if(references != NULL){
+            SUCCEEDS(references(obj, (visitproc)freeze_visit, freeze_state));
         }
     }
 
@@ -1550,12 +1553,9 @@ int traverse_freeze(PyObject* obj, struct FreezeState* freeze_state)
         }
     }
 
-    // The default tp_traverse will not visit the type object if it is
-    // not heap allocated, so we need to do that manually here to freeze
-    // the statically allocated types that are reachable.
-    if (!(Py_TYPE(obj)->tp_flags & Py_TPFLAGS_HEAPTYPE)) {
-        SUCCEEDS(freeze_visit(_PyObject_CAST(Py_TYPE(obj)), freeze_state));
-    }
+    // Always freeze the type object itself; tp_reachable implementations
+    // may omit visiting the type (e.g., dict-derived heap types).
+    SUCCEEDS(freeze_visit(_PyObject_CAST(Py_TYPE(obj)), freeze_state));
 
     return 0;
 
