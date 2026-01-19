@@ -33,6 +33,10 @@ static int Region_init(_PyRegionObject *self, PyObject *args, PyObject *kwds) {
         return -1;
     }
 
+    // Regions should not be tracked in normal GC, those fields will be
+    // used to track subregions 
+    PyObject_GC_UnTrack(self);
+
     self->region = NULL_REGION;
     self->name = NULL;
 
