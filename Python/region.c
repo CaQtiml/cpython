@@ -111,6 +111,35 @@ gc_list_is_empty(PyGC_Head *list)
     return (list->_gc_next == (uintptr_t)list);
 }
 
+/* Remove `node` from the gc list it's currently in. */
+static inline void
+gc_list_remove(PyGC_Head *node)
+{
+    PyGC_Head *prev = GC_PREV(node);
+    PyGC_Head *next = GC_NEXT(node);
+
+    _PyGCHead_SET_NEXT(prev, next);
+    _PyGCHead_SET_PREV(next, prev);
+
+    node->_gc_next = 0; /* object is not currently tracked */
+}
+
+/* Append `node` to `list`. */
+static inline void
+gc_list_append(PyGC_Head *node, PyGC_Head *list)
+{
+    assert((list->_gc_prev & ~_PyGC_PREV_MASK) == 0);
+    PyGC_Head *last = (PyGC_Head *)list->_gc_prev;
+
+    // last <-> node
+    _PyGCHead_SET_PREV(node, last);
+    _PyGCHead_SET_NEXT(last, node);
+
+    // node <-> list
+    _PyGCHead_SET_NEXT(node, list);
+    list->_gc_prev = (uintptr_t)node;
+}
+
 /* Move `node` from the gc list it's currently in (which is not explicitly
  * named here) to the end of `list`.  This is semantically the same as
  * gc_list_remove(node) followed by gc_list_append(node, list).
@@ -161,6 +190,67 @@ get_gc_state(void)
     return &interp->gc;
 }
 #endif // Py_GIL_DISABLED
+// **********************************************************************
+// Modified from the GC functions above
+// **********************************************************************
+
+/* Prepend `node` to `list`. */
+static inline void
+gc_list_prepend(PyGC_Head *node, PyGC_Head *list)
+{
+    assert((list->_gc_prev & ~_PyGC_PREV_MASK) == 0);
+    PyGC_Head *first = (PyGC_Head *)list->_gc_next;
+
+    // first <-> node
+    _PyGCHead_SET_NEXT(node, first);
+    _PyGCHead_SET_PREV(first, node);
+
+    // node <-> list
+    _PyGCHead_SET_NEXT(list, node);
+    _PyGCHead_SET_PREV(node, list);
+}
+
+/* This merges two region lists, this keeps bridge objects of subregions
+ * at the beginning of the list and other contained objects at the end.
+ */
+static void
+gc_region_list_merge(PyGC_Head *from, PyGC_Head *to)
+{
+    assert(from != to);
+    if (gc_list_is_empty(from)) {
+        return;
+    }
+
+    // Move sub-regions to the start of the `to` list
+    PyGC_Head *from_bridges = GC_NEXT(from);
+    while (from_bridges != from) {
+        PyObject* item = _Py_FROM_GC(from_bridges);
+        // Break if this is not a bride
+        if (Py_TYPE(item) != &_PyRegion_Type || !_PyRegion_IsBridge(item)) {
+            break;
+        }
+    }
+    if (from_bridges != GC_NEXT(from)) {
+        // We have bridges which should be moved:
+        PyGC_Head *bridges_start = GC_NEXT(from);
+        PyGC_Head *bridges_end = GC_PREV(from_bridges);
+        PyGC_Head *to_head = GC_PREV(from_bridges);
+
+        // Remove bridges from the `from` list
+        _PyGCHead_SET_NEXT(from, from_bridges);
+        _PyGCHead_SET_PREV(from_bridges, from);
+
+        // Insert bridges into the `to` list
+        _PyGCHead_SET_NEXT(bridges_end, to_head);
+        _PyGCHead_SET_PREV(to_head, bridges_end);
+        _PyGCHead_SET_NEXT(to, bridges_start);
+        _PyGCHead_SET_PREV(bridges_start, to);
+    }
+
+    // Move all other contained objects
+    gc_list_merge(from, to);
+}
+
 // **********************************************************************
 
 // This uses the given arguments to create and throw a `RegionError`
