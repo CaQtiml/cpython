@@ -201,7 +201,7 @@ static inline void
 gc_list_prepend(PyGC_Head *node, PyGC_Head *list)
 {
     assert((list->_gc_prev & ~_PyGC_PREV_MASK) == 0);
-    PyGC_Head *first = (PyGC_Head *)list->_gc_next;
+    PyGC_Head *first = GC_NEXT(list);
 
     // first <-> node
     _PyGCHead_SET_NEXT(node, first);
@@ -483,7 +483,7 @@ static int regiondata_union_merge(
     // If `target` is the parent of `source` it can be merged. This unsets
     // the parent of `source` to correctly update the OSC and RC.
     Py_region_t source_parent = regiondata_get_parent_follow_pending(source);
-    if (source_parent == target) {
+    if (source_parent == target && source_parent != NULL_REGION) {
         // Set parent can't fail here, since this function has increased the
         // OSC, thereby keeping the region open if it was previously open.
         regiondata_set_parent(source, NULL_REGION);
@@ -1638,6 +1638,7 @@ int regiondata_clean(PyObject* bridge) {
         PyObject* item = list_pop(pending_list);
         Py_region_t item_region = _PyRegion_Get(item);
 
+        ASSERT_REGION_OWNER_HAS_NO_TAG(item_region);
         assert(regiondata_is_bridge(item_region, item));
 
         // Store metadata for the new region
