@@ -1226,11 +1226,12 @@ tuple_iter(PyObject *seq)
 static inline int
 maybe_freelist_push(PyTupleObject *op)
 {
-    if (!Py_IS_TYPE(op, &PyTuple_Type)) {
+    if (!Py_IS_TYPE(op, &PyTuple_Type) || !PyRegion_IsLocal(op)) {
         return 0;
     }
     Py_ssize_t index = Py_SIZE(op) - 1;
     if (index < PyTuple_MAXSAVESIZE) {
+        PyRegion_RecycleObject(op);
         return _Py_FREELIST_PUSH(tuples[index], op, Py_tuple_MAXFREELIST);
     }
     return 0;

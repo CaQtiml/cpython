@@ -13,6 +13,10 @@ typedef Py_uintptr_t PyRegion_staged_ref_t;
 PyAPI_FUNC(int) _PyRegion_IsLocal(PyObject *obj);
 #define PyRegion_IsLocal(obj) _PyRegion_IsLocal(_PyObject_CAST(obj))
 
+PyAPI_FUNC(int) _PyRegion_ShareRegion(PyObject *a, PyObject *b);
+#define PyRegion_ShareRegion(a, b) _PyRegion_ShareRegion(_PyObject_CAST(a), _PyObject_CAST(b))
+
+
 // Helper macros to count the number of arguments
 #define _PyRegion__COUNT_ARGS(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, N, ...) N
 #define _PyRegion_COUNT_ARGS(...) _PyRegion__COUNT_ARGS(__VA_ARGS__, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1)
@@ -28,8 +32,10 @@ PyAPI_FUNC(void) PyRegion_CommitStagedRef(PyRegion_staged_ref_t staged_ref);
 
 PyAPI_FUNC(int) _PyRegion_AddRef(PyObject *src, PyObject *tgt);
 PyAPI_FUNC(int) _PyRegion_AddRefs(PyObject *src, int tgt_count, ...);
+PyAPI_FUNC(int) _PyRegion_AddRefsArray(PyObject *src, int tgt_count, PyObject** tgt_array);
 #define PyRegion_AddRef(src, tgt) _PyRegion_AddRef(_PyObject_CAST(src), _PyObject_CAST(tgt))
 #define PyRegion_AddRefs(src, ...) _PyRegion_AddRefs(_PyObject_CAST(src), _PyRegion_COUNT_ARGS(__VA_ARGS__), __VA_ARGS__)
+#define PyRegion_AddRefsArray(src, tgt_count, tgt_array) _PyRegion_AddRefsArray(_PyObject_CAST(src), tgt_count, tgt_array)
 
 PyAPI_FUNC(void) _PyRegion_RemoveRef(PyObject *src, PyObject *tgt);
 #define PyRegion_RemoveRef(src, tgt) _PyRegion_RemoveRef(_PyObject_CAST(src), _PyObject_CAST(tgt))
