@@ -1184,6 +1184,7 @@ PyNumber_Add(PyObject *v, PyObject *w)
     if (result != Py_NotImplemented) {
         return result;
     }
+    assert(PyRegion_IsLocal(result));
     Py_DECREF(result);
 
     PySequenceMethods *m = Py_TYPE(v)->tp_as_sequence;
@@ -1467,7 +1468,14 @@ _PyNumber_Index(PyObject *item)
     }
 
     if (PyLong_Check(item)) {
-        return Py_NewRef(item);
+        // PyRegion_AddLocalRef(item); // Can Fail
+        /*
+            if (PyRegion_AddLocalRef(item)) {
+                return NULL;
+            }
+            return Py_NewRef(item);
+        */
+        return PyRegion_NewRef(item);
     }
     if (!_PyIndex_Check(item)) {
         PyErr_Format(PyExc_TypeError,
@@ -1509,6 +1517,7 @@ PyObject *
 PyNumber_Index(PyObject *item)
 {
     PyObject *result = _PyNumber_Index(item);
+    // For subclass handling
     if (result != NULL && !PyLong_CheckExact(result)) {
         Py_SETREF(result, _PyLong_Copy((PyLongObject *)result));
     }
@@ -1563,6 +1572,7 @@ PyNumber_AsSsize_t(PyObject *item, PyObject *err)
     }
 
  finish:
+    PyRegion_RemoveLocalRef(value);
     Py_DECREF(value);
     return result;
 }
@@ -2258,6 +2268,7 @@ _PySequence_IterSearch(PyObject *seq, PyObject *obj, int operation)
         }
 
         cmp = PyObject_RichCompareBool(item, obj, Py_EQ);
+        PyRegion_RemoveLocalRef(item);
         Py_DECREF(item);
         if (cmp < 0)
             goto Fail;
@@ -2306,6 +2317,7 @@ Fail:
     n = -1;
     /* fall through */
 Done:
+    PyRegion_RemoveLocalRef(it);
     Py_DECREF(it);
     return n;
 
