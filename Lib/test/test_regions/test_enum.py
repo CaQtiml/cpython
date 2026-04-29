@@ -123,8 +123,10 @@ class TestRegionEnumerateNext(unittest.TestCase):
         r.arr = [r.a, r.b]
         r.it_arr = iter(r.arr)
         obj = enumerate(r.it_arr)
+        self.assertTrue(is_local(obj))
         base_lrc = r._lrc
         r.re1 = next(obj)
+        self.assertFalse(is_local(r.re1))
         self.assertEqual(r._lrc, base_lrc+1)
 
     def test_next_result_moved_into_region_does_not_increase_lrc_2(self):
@@ -146,6 +148,29 @@ class TestRegionEnumerateNext(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc+1)
         r.re2 = next(obj)
         self.assertEqual(r._lrc, base_lrc)
+
+    def test_next_result_moved_into_region_does_not_increase_lrc_3(self):
+        """
+        Assigning the result of next() directly into a region should
+        transfer ownership rather than creating an external borrow,
+        so LRC should not increase beyond the base.
+        """
+        r = Region()
+        r.a = self.A()
+        r.b = self.A()
+        r.c = self.A()
+        r.d = self.A()
+        r.arr = [r.a, r.b, r.c, r.d]
+        r.it_arr = iter(r.arr)
+        obj = enumerate(r.it_arr)
+        self.assertTrue(is_local(obj))
+        base_lrc = r._lrc
+        r.re1 = next(obj)
+        self.assertFalse(is_local(r.re1))
+        self.assertEqual(r._lrc, base_lrc+1)
+        re2 = next(obj)
+        self.assertTrue(is_local(re2))
+        self.assertEqual(r._lrc, base_lrc+1)
 
     def test_next_mixed_local_and_region_assignment(self):
         """
@@ -263,10 +288,12 @@ class TestRegionEnumerateMoveIntoRegion(unittest.TestCase):
         base_lrc = r._lrc
 
         obj = enumerate(r.it_arr)
-        self.assertEqual(r._lrc, base_lrc + 1)  # obj holds external ref
+        self.assertEqual(r._lrc, base_lrc + 1)
+        self.assertTrue(is_local(obj))
 
         r.obj = obj
-        self.assertEqual(r._lrc, base_lrc+1)    # obj points to the enumerate object inside the region now, so LRC should not increase further
+        self.assertEqual(r._lrc, base_lrc+1)
+        self.assertFalse(is_local(obj))
 
     # @unittest.skip("GC ERROR")
     def test_next_on_region_owned_enumerate_does_not_increase_lrc(self):
@@ -487,11 +514,142 @@ class TestRegionEnumerateTwoRegions(unittest.TestCase):
         r1.b = self.A()
 
         local_list = [r1.a, r1.b]
+        base_r1 = r1._lrc
+        base_r2 = r2._lrc
         it = iter(local_list)
         with self.assertRaises(Exception):
             r2.obj = enumerate(it)
+        self.assertEqual(r1._lrc, base_r1)
+        self.assertEqual(r2._lrc, base_r2)
 
+    def test_next_on_enumerate_assigns_to_wrong_region_raises(self):
+        """
+        Calling next() on an enumerate over r1's iterator and assigning
+        the result into r2 should raise a RuntimeError, since the element
+        belongs to r1, not r2.
+        """
+        r1 = Region()
+        r2 = Region()
+        r1.a = self.A()
+        r1.b = self.A()
+        r1.arr = [r1.a, r1.b]
+        r1.it = iter(r1.arr)
+        base_r1 = r1._lrc
+        base_r2 = r2._lrc
+        obj = enumerate(r1.it)
+        self.assertEqual(r1._lrc, base_r1 + 1)
+        self.assertEqual(r2._lrc, base_r2)
 
+        # next_obj = next(obj)
+        with self.assertRaises(Exception):
+            r2.re1 = next(obj)
+
+        self.assertEqual(r1._lrc, base_r1+2) # Although  r2.re1 = next_obj fails, next_obj is still a local variable that holds a reference to r1.a, so r1's LRC increases by 1
+        self.assertEqual(r2._lrc, base_r2)
+
+        obj = None
+        self.assertEqual(r1._lrc, base_r1)
+        self.assertEqual(r2._lrc, base_r2)
+
+    def test_enumerate_moved_into_region_after_next_yielded_other_region_element_raises(self):
+        """
+        If next() has already yielded an element from r1, attempting to
+        move the enumerate object itself into r2 should raise a RuntimeError.
+        Region states must remain consistent after the failure.
+        """
+        r1 = Region()
+        r2 = Region()
+        r1.a = self.A()
+        r1.b = self.A()
+        r1.arr = [r1.a, r1.b]
+        r1.it = iter(r1.arr)
+        obj = enumerate(r1.it)
+        re1 = next(obj)
+        base_r1 = r1._lrc
+        base_r2 = r2._lrc
+
+        with self.assertRaises(Exception):
+            r2.obj = obj
+
+        self.assertEqual(r1._lrc, base_r1)
+        self.assertEqual(r2._lrc, base_r2)
+
+    def test_enumerate_over_list_spanning_two_regions_cannot_move_into_either(self):
+        """
+        An enumerate over a local list whose elements belong to two different
+        regions cannot be moved into either region, since it would create a
+        cross-region reference. Both attempts should raise, and all region
+        states must remain unchanged.
+        """
+        r1 = Region()
+        r2 = Region()
+        r1.a = self.A()
+        r2.b = self.A()
+        local_list = [r1.a, r2.b]
+        it = iter(local_list)
+        obj = enumerate(it)
+        base_r1 = r1._lrc
+        base_r2 = r2._lrc
+
+        with self.assertRaises(Exception):
+            r1.obj = obj
+
+        self.assertEqual(r1._lrc, base_r1)
+        self.assertEqual(r2._lrc, base_r2)
+
+        with self.assertRaises(Exception):
+            r2.obj = obj
+
+        self.assertEqual(r1._lrc, base_r1)
+        self.assertEqual(r2._lrc, base_r2)
+
+    def test_two_enumerates_over_different_regions_do_not_interfere(self):
+        """
+        Two separate enumerates, each over a different region's iterator,
+        should be fully independent. Advancing one should only affect its
+        own region's LRC and must never affect the other.
+        """
+        r1 = Region()
+        r2 = Region()
+        r1.a = self.A()
+        r1.b = self.A()
+        r2.c = self.A()
+        r2.d = self.A()
+        r1.arr = [r1.a, r1.b]
+        r2.arr = [r2.c, r2.d]
+        r1.it = iter(r1.arr)
+        r2.it = iter(r2.arr)
+        base_r1 = r1._lrc
+        base_r2 = r2._lrc
+
+        obj1 = enumerate(r1.it)
+        obj2 = enumerate(r2.it)
+        self.assertEqual(r1._lrc, base_r1 + 1)
+        self.assertEqual(r2._lrc, base_r2 + 1)
+
+        re1 = next(obj1)
+        self.assertEqual(r1._lrc, base_r1 + 2)
+        self.assertEqual(r2._lrc, base_r2 + 1)
+
+        re2 = next(obj2)
+        self.assertEqual(r1._lrc, base_r1 + 2)
+        self.assertEqual(r2._lrc, base_r2 + 2)
+
+        re1 = None
+        self.assertEqual(r1._lrc, base_r1 + 2) # +2 since enum->result still holds a tuple that contains a reference to r1.a
+        self.assertEqual(r2._lrc, base_r2 + 2)
+
+        re2 = None
+        self.assertEqual(r1._lrc, base_r1 + 2)
+        self.assertEqual(r2._lrc, base_r2 + 2)
+
+        obj1 = None
+        self.assertEqual(r1._lrc, base_r1)
+        self.assertEqual(r2._lrc, base_r2 + 2)
+        obj2 = None
+        self.assertEqual(r1._lrc, base_r1)
+        self.assertEqual(r2._lrc, base_r2)
+    
     def test_enumerate_results_released_independently_per_region(self):
         """
         Releasing next() results from two different regions should
