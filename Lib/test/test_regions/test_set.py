@@ -16,10 +16,6 @@ class TestRegionSet(unittest.TestCase):
         self.assertEqual(r._lrc, 1)
 
     def test_set_from_region_array_increases_lrc(self):
-        """
-        Creating a set from a region array should increase the LRC
-        for each element borrowed from the region.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -31,10 +27,6 @@ class TestRegionSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 2)
 
     def test_set_to_none_decreases_lrc(self):
-        """
-        Setting the set to None should release the borrowed references
-        and bring LRC back to its pre-set level.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -48,11 +40,6 @@ class TestRegionSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_set_moved_into_region_adjusts_lrc(self):
-        """
-        Moving a set into a region should transfer ownership of its elements,
-        reducing the LRC by the number of elements (now owned) minus the
-        external reference to the set itself.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -71,10 +58,6 @@ class TestRegionSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 1)
 
     def test_set_from_set_in_region_increases_lrc(self):
-        """
-        Creating a new set from a set that is already inside a region
-        should borrow all elements, increasing the LRC accordingly.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -92,10 +75,6 @@ class TestRegionSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_set_from_dict_keys_with_object_keys(self):
-        """
-        Creating a set from a dict that has object keys inside a region
-        should borrow those keys and increase the LRC.
-        """
         r = Region()
         r.word = {self.A(): "value", self.A(): "value2"}
         base_lrc = r._lrc
@@ -104,10 +83,6 @@ class TestRegionSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 2)
 
     def test_set_from_dict_with_frozen_string_keys(self):
-        """
-        Creating a set from a dict with frozen string keys should
-        not affect the LRC since strings are frozen/immutable.
-        """
         r = Region()
         r.word = {"key": "value", "key2": "value2"}
         base_lrc = r._lrc
@@ -117,10 +92,6 @@ class TestRegionSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_set_move_into_region_fails_if_element_in_another_region(self):
-        """
-        Moving a set into a region should fail if any element belongs
-        to a different region, and the state should remain consistent.
-        """
         r = Region()
         r2 = Region()
         r2.word4 = self.A()
@@ -150,9 +121,6 @@ class TestRegionSetDiscard(unittest.TestCase):
         self.A = A
 
     def test_discard_decreases_lrc(self):
-        """
-        Discarding an element from a set should release the subregion's parent.
-        """
         r1 = Region()
         r2 = Region()
         r3 = Region()
@@ -172,10 +140,6 @@ class TestRegionSetDiscard(unittest.TestCase):
         self.assertIsNone(r3.parent)
         
     def test_discard_nonexistent_element_does_not_change_lrc(self):
-        """
-        Discarding an element that is not in the set should not
-        affect the LRC.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -191,9 +155,6 @@ class TestRegionSetDiscard(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 1)
     
     def test_pop_from_set_decreases_lrc(self):
-        """
-        Popping an element from a set should decrease the LRC.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -208,9 +169,6 @@ class TestRegionSetDiscard(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 2) # Now that the popped element is released, LRC should decrease by 1.
     
     def test_pop_from_set_inside_region_object_outsude_region_decreases_lrc(self):
-        """
-        Popping an element from a set that is inside a region should decrease the LRC of the region.
-        """
         r = Region()
         a = self.A()
         b = self.A()
@@ -232,11 +190,6 @@ class TestRegionSetDifference(unittest.TestCase):
         self.A = A
 
     def test_set_difference_does_not_increase_lrc(self):
-        """
-        Taking a set difference should produce a new local set.
-        The LRC of the source region should not increase since
-        the resulting set only contains elements not in the subtracted sets.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -261,10 +214,6 @@ class TestRegionSetDifference(unittest.TestCase):
         self.assertTrue(is_local(s4))
 
     def test_set_difference_result_releases_lrc_on_none(self):
-        """
-        Setting the result of a difference to None should release
-        any borrowed references it holds.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -284,10 +233,6 @@ class TestRegionSetDifference(unittest.TestCase):
         self.assertLess(r._lrc, base_lrc)
 
     def test_set_difference_result_releases_lrc_on_none_2_elem(self):
-        """
-        Setting the result of a difference to None should release
-        any borrowed references it holds.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -312,10 +257,6 @@ class TestRegionSetSymmetricDifference(unittest.TestCase):
         self.A = A
 
     def test_symmetric_difference_result_is_local(self):
-        """
-        The result of a symmetric difference of two sets borrowing
-        from a region should be a local set.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -336,10 +277,6 @@ class TestRegionSetSymmetricDifference(unittest.TestCase):
         self.assertTrue(is_local(result))
 
     def test_symmetric_difference_lrc_released_on_none(self):
-        """
-        Releasing the result of symmetric_difference should bring
-        the LRC back down by the number of unique elements it held.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -359,9 +296,6 @@ class TestRegionSetSymmetricDifference(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 2)
 
     def test_symmetric_difference_operator_matches_method(self):
-        """
-        The `^` operator should behave identically to symmetric_difference().
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -389,10 +323,6 @@ class TestRegionFrozenSet(unittest.TestCase):
         self.A = A
 
     def test_frozenset_from_region_array_increases_lrc(self):
-        """
-        Creating a frozenset from a region array should borrow
-        all elements and increase the LRC accordingly.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -404,10 +334,6 @@ class TestRegionFrozenSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 3)
 
     def test_frozenset_moved_into_region_adjusts_lrc(self):
-        """
-        Moving a frozenset into a region transfers ownership of its
-        elements, reducing the borrowed references accordingly.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -422,11 +348,6 @@ class TestRegionFrozenSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_frozenset_copy_is_same_object(self):
-        """
-        Copying a frozenset that is already inside a region should
-        return the same object (CPython optimizes frozenset copies),
-        not a new independent frozenset.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -440,10 +361,6 @@ class TestRegionFrozenSet(unittest.TestCase):
         self.assertIs(s2, r.set1)
 
     def test_frozenset_copy_does_not_change_lrc(self):
-        """
-        Since frozenset.copy() returns the same object, the LRC
-        should increase by exactly 1 for the new reference.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -461,10 +378,6 @@ class TestRegionFrozenSet(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_frozenset_from_another_frozenset(self):
-        """
-        Creating a frozenset from another frozenset should return the same object,
-        and not increase the LRC since it's not borrowing new references.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -489,10 +402,6 @@ class TestRegionSetCopy(unittest.TestCase):
         self.A = A
 
     def test_copy_increases_lrc(self):
-        """
-        Copying a set that borrows from a region should increase
-        the LRC since the copy also holds references to the same elements.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -506,10 +415,6 @@ class TestRegionSetCopy(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 3)
 
     def test_copy_released_decreases_lrc(self):
-        """
-        Releasing the copied set should bring LRC back down
-        to the level before the copy was made.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -535,10 +440,6 @@ class TestRegionSetIntersection(unittest.TestCase):
         self.A = A
 
     def test_intersection_result_is_local(self):
-        """
-        The result of an intersection of two sets borrowing from
-        a region should be a local set.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -554,10 +455,6 @@ class TestRegionSetIntersection(unittest.TestCase):
         self.assertTrue(is_local(result))
 
     def test_intersection_lrc_reflects_common_elements(self):
-        """
-        The intersection result only holds references to shared elements,
-        so the LRC increase should reflect only those elements.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -577,9 +474,6 @@ class TestRegionSetIntersection(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_intersection_operator_matches_method(self):
-        """
-        The `&` operator should behave identically to intersection().
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -595,10 +489,6 @@ class TestRegionSetIntersection(unittest.TestCase):
         _ = s1 & s2
         self.assertEqual(r._lrc, base_lrc + 2) 
     def test_intersection_multiple_sets(self):
-        """
-        Intersection across three sets should only retain elements
-        common to all three.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -622,11 +512,6 @@ class TestRegionSetIntersection(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_intersection_multiple_sets_2_1(self):
-        """
-        Intersection across two sets should only retain elements
-        common to all two. The first set is in the region, and the second set
-        is in local.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -646,10 +531,6 @@ class TestRegionSetIntersection(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 2)
 
     def test_intersection_multiple_sets_2_2(self):
-        """
-        Intersection across three sets should only retain elements
-        common to all three. Some sets are now in the region, and some are in local.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -683,10 +564,6 @@ class TestRegionSetIntersectionUpdate(unittest.TestCase):
         self.A = A
 
     def test_intersection_update_removes_non_common_refs(self):
-        """
-        intersection_update should release references to elements removed
-        from s1 and retain only those in the intersection.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -704,10 +581,6 @@ class TestRegionSetIntersectionUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 3 + 2) # -3 for dropping a b c, +2 for retaining b and c
     
     def test_intersection_update_removes_non_common_refs_2(self):
-        """
-        intersection_update should release references to elements removed
-        from s1 and retain only those in the intersection. Using &= instead.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -725,9 +598,6 @@ class TestRegionSetIntersectionUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 3 + 2) # -3 for dropping a b c, +2 for retaining b and c
 
     def test_intersection_update_operator_matches_method(self):
-        """
-        The `&=` operator should behave identically to intersection_update().
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -745,9 +615,6 @@ class TestRegionSetIntersectionUpdate(unittest.TestCase):
         self.assertEqual(s1_method, s1_operator)
     
     def test_intersection_update_swap_bodies_different_region(self):
-        """
-        the first set is in the local, but the second set is in the region.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -767,9 +634,6 @@ class TestRegionSetIntersectionUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 3 + 2) # -3 for dropping a b c, +2 for retaining b and c
 
     def test_intersection_update_swap_bodies_different_region_2_intersection_update(self):
-        """
-        the first set is in the region, but the second set is in the local. Using intersection_update().
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -790,9 +654,6 @@ class TestRegionSetIntersectionUpdate(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_intersection_update_swap_bodies_different_region_2_iand(self):
-        """
-        the first set is in the region, but the second set is in the local. Using &=.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -812,9 +673,6 @@ class TestRegionSetIntersectionUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc) # should not change since s1 is in the region. LRC should not be updated since s1 is in the region.
     
     def test_intersection_update_multi_swap_bodies_different_region(self):
-        """
-        the first and third set is in the region, but the second set is local.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -847,10 +705,6 @@ class TestRegionSetUnion(unittest.TestCase):
         self.A = A
 
     def test_union_result_is_local(self):
-        """
-        The result of a union of two sets borrowing from a region
-        should be a local set.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -866,10 +720,6 @@ class TestRegionSetUnion(unittest.TestCase):
         self.assertTrue(is_local(result))
 
     def test_union_lrc_reflects_all_unique_elements(self):
-        """
-        The union result holds references to all unique elements across
-        both sets, so the LRC should increase by the count of unique elements.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -889,10 +739,6 @@ class TestRegionSetUnion(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_union_lrc_reflects_all_unique_elements_union(self):
-        """
-        The union result holds references to all unique elements across
-        both sets, so the LRC should increase by the count of unique elements.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -912,9 +758,6 @@ class TestRegionSetUnion(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_union_operator_matches_method(self):
-        """
-        The `|` operator should behave identically to union().
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -938,11 +781,6 @@ class TestRegionSetUnionUpdate(unittest.TestCase):
         self.A = A
 
     def test_union_update_adds_new_refs(self):
-        """
-        |= should add references to new elements from s2 that
-        weren't already in s1, increasing the LRC accordingly.
-        Using |=.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -959,11 +797,6 @@ class TestRegionSetUnionUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 3 + 4) # -3 for original a b c, +4 for new a b c f (but a b c are still borrowed, so net +1 for f)
     
     def test_union_update_adds_new_refs_update(self):
-        """
-        |= should add references to new elements from s2 that
-        weren't already in s1, increasing the LRC accordingly.
-        Using update instead of |=.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -981,11 +814,6 @@ class TestRegionSetUnionUpdate(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_union_update_adds_new_refs_2(self):
-        """
-        |= should add references to new elements from s2 that
-        weren't already in s1, increasing the LRC accordingly.
-        Using |=. First set is in the region, second set is in local.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1002,11 +830,6 @@ class TestRegionSetUnionUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
     
     def test_union_update_adds_new_refs_2_update(self):
-        """
-        |= should add references to new elements from s2 that
-        weren't already in s1, increasing the LRC accordingly.
-        Using update instead of |=. First set is in the region, second set is in local.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1023,9 +846,6 @@ class TestRegionSetUnionUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_union_update_released_decreases_lrc(self):
-        """
-        Releasing s1 after |= should drop all the references it holds.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1053,10 +873,6 @@ class TestRegionSetDifferenceUpdate(unittest.TestCase):
         self.A = A
 
     def test_difference_update_removes_refs(self):
-        """
-        -= should release references to elements removed from s1,
-        decreasing the LRC by the number of elements subtracted.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1072,10 +888,6 @@ class TestRegionSetDifferenceUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 3 + 2) # -3 for original a b c, +2 for remaining b and c
 
     def test_difference_update_removes_refs_difference_update(self):
-        """
-        -= should release references to elements removed from s1,
-        decreasing the LRC by the number of elements subtracted.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1092,10 +904,6 @@ class TestRegionSetDifferenceUpdate(unittest.TestCase):
 
     @unittest.expectedFailure
     def test_difference_update_removes_refs_2(self):
-        """
-        -= should release references to elements removed from s1,
-        decreasing the LRC by the number of elements subtracted.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1111,10 +919,6 @@ class TestRegionSetDifferenceUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc) # -3 for original a b c, +2 for remaining b and c
 
     def test_difference_update_removes_refs_difference_2_update(self):
-        """
-        -= should release references to elements removed from s1,
-        decreasing the LRC by the number of elements subtracted.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1130,9 +934,6 @@ class TestRegionSetDifferenceUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc) 
 
     def test_difference_update_result_released(self):
-        """
-        Releasing s1 after -= should drop all remaining references it holds.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1159,12 +960,6 @@ class TestRegionSetSymmetricDifferenceUpdate(unittest.TestCase):
         self.A = A
 
     def test_symmetric_difference_update_adjusts_lrc(self):
-        """
-        symmetric_difference_update should release refs to common elements
-        and add refs to new unique elements from s2.
-        arr1 = {a, b, c, f}, arr2 = {a, b, f} → result = {c}
-        Drops a, b, f (3 refs), keeps c (1 ref).
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1181,9 +976,6 @@ class TestRegionSetSymmetricDifferenceUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc - 4 + 1) # -4 for original a b c f, +1 for remaining c
 
     def test_symmetric_difference_update_operator_matches_method(self):
-        """
-        The `^=` operator should behave identically to symmetric_difference_update().
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1202,10 +994,6 @@ class TestRegionSetSymmetricDifferenceUpdate(unittest.TestCase):
     
     @unittest.expectedFailure
     def test_symmetric_difference_update_removes_refs_2(self):
-        """
-        ^= should release references to elements removed from s1,
-        decreasing the LRC by the number of elements subtracted.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1221,10 +1009,6 @@ class TestRegionSetSymmetricDifferenceUpdate(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_symmetric_difference_update_removes_refs_difference_2_update(self):
-        """
-        ^= should release references to elements removed from s1,
-        decreasing the LRC by the number of elements subtracted.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1249,9 +1033,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.A = A
 
     def test_issubset_true(self):
-        """
-        s1 = {a} is a subset of s2 = {a, b, c}.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1265,9 +1046,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.assertTrue(s1.issubset(s2))
 
     def test_issubset_false(self):
-        """
-        s1 = {a, b, c} is not a subset of s2 = {a}.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1281,9 +1059,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.assertFalse(s1.issubset(s2))
 
     def test_issubset_operator_matches_method(self):
-        """
-        The `<=` operator should behave identically to issubset().
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1297,9 +1072,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.assertEqual(s1.issubset(s2), s1 <= s2)
 
     def test_issubset_does_not_change_lrc(self):
-        """
-        issubset is a read-only operation and should not affect the LRC.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1315,9 +1087,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_issuperset_true(self):
-        """
-        s2 = {a, b, c} is a superset of s1 = {a}.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1331,9 +1100,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.assertTrue(s2.issuperset(s1))
 
     def test_issuperset_false(self):
-        """
-        s1 = {a} is not a superset of s2 = {a, b, c}.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1347,9 +1113,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.assertFalse(s1.issuperset(s2))
 
     def test_issuperset_strict_operator(self):
-        """
-        s2 > s1 (strict superset) should be False when s1 == s2.
-        """
         r = Region()
         r.a = self.A()
         r.arr1 = [r.a]
@@ -1360,9 +1123,6 @@ class TestRegionSetSubsetSuperset(unittest.TestCase):
         self.assertFalse(s2 > s1)
 
     def test_issuperset_does_not_change_lrc(self):
-        """
-        issuperset is a read-only operation and should not affect the LRC.
-        """
         r = Region()
         r.a = self.A()
         r.b = self.A()
@@ -1387,10 +1147,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.A = A
 
     def test_iter_creation_does_not_change_lrc(self):
-        """
-        Creating an iterator over a set should not by itself
-        change the LRC of the region.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1403,10 +1159,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_iter_creation_does_not_change_lrc_2(self):
-        """
-        Creating an iterator over a set should not by itself
-        change the LRC of the region.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1419,10 +1171,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc-1)
 
     def test_iter_creation_does_not_change_lrc_3(self):
-        """
-        Creating an iterator over a set should not by itself
-        change the LRC of the region.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1435,10 +1183,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_iter_creation_does_not_change_lrc_4(self):
-        """
-        Creating an iterator over a set should not by itself
-        change the LRC of the region.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1451,10 +1195,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc+1)
 
     def test_next_on_iter_increases_lrc(self):
-        """
-        Calling next() on the iterator yields a borrowed reference,
-        increasing the LRC by 1.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1479,10 +1219,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 3)
 
     def test_next_on_iter_increases_lrc_2(self):
-        """
-        Calling next() on the iterator yields a borrowed reference,
-        increasing the LRC by 1.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1507,10 +1243,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_iter_to_none_releases_lrc(self):
-        """
-        Setting the iterator to None should release the iterator's
-        reference and bring LRC back to the pre-iterator level.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1524,10 +1256,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc)
 
     def test_next_into_region_transfers_ownership(self):
-        """
-        Assigning next() result into a region should transfer ownership
-        rather than keeping it as a borrowed external reference.
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1543,11 +1271,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc + 1)
     
     def test_iterator(self):
-        """
-        Creating an iterator from a set that borrows from a region should
-        not increase the LRC, since the iterator itself does not hold
-        references to the elements (it borrows from the set).
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1563,11 +1286,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc+1) 
 
     def test_iterator2(self):
-        """
-        Creating an iterator from a set that borrows from a region should
-        not increase the LRC, since the iterator itself does not hold
-        references to the elements (it borrows from the set).
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1583,11 +1301,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc+2)
 
     def test_iterator_on_iterator(self):
-        """
-        Creating an iterator from a set that borrows from a region should
-        not increase the LRC, since the iterator itself does not hold
-        references to the elements (it borrows from the set).
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
@@ -1603,11 +1316,6 @@ class TestRegionSetIterator(unittest.TestCase):
         self.assertEqual(r._lrc, base_lrc-1+1)
 
     def test_iterator_on_iterator_2(self):
-        """
-        Creating an iterator from a set that borrows from a region should
-        not increase the LRC, since the iterator itself does not hold
-        references to the elements (it borrows from the set).
-        """
         r = Region()
         r.word = self.A()
         r.word2 = self.A()
