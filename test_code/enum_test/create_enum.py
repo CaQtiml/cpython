@@ -5,6 +5,10 @@ from enum import Enum
 class A: pass
 # freeze(A())
 
+def disable_optimization(region, obj):
+    region.re1 = next(obj)
+    next(obj)
+
 # r = Region()
 # input("Press Enter to create objects...")
 # print(f"Region r: {r}")
@@ -117,6 +121,7 @@ print(f"Region r2: {r2}")
 r1.a = A()
 r1.b = A()
 r1.arr = [r1.a, r1.b]
+print(f"{r1.arr}")
 r1.it = iter(r1.arr)
 print(f"Region r1 after creating arr and iterator: {r1}")
 print(f"Region r2 after creating arr and iterator in r1: {r2}")
@@ -133,6 +138,10 @@ try:
 except Exception as e:
     print(f"Error: {e}")
 
+print(f"Region r1 after trying to move enum result into r2: {r1}")
+print(f"Region r2 after trying to move enum result into r2: {r2}")
+re1 = next(obj)
+print(f"{re1}")
 print(f"Region r1 after trying to move enum result into r2: {r1}")
 print(f"Region r2 after trying to move enum result into r2: {r2}")
 
