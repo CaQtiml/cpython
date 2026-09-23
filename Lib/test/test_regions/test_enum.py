@@ -515,7 +515,7 @@ class TestRegionEnumerateTwoRegions(unittest.TestCase):
         r2.d = self.A()
         r2.e = self.A()
         r1.arr = [r1.a, r1.b, r1.c, r1.d, r1.e]
-        r2.arr = [r2.c, r2.d, r2.c, r2.d, r2.e]
+        r2.arr = [r2.a, r2.b, r2.c, r2.d, r2.e]
         r1.it = iter(r1.arr)
         r2.it = iter(r2.arr)
         base_r1 = r1._lrc
